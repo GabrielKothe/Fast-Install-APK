@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pacote MSIX "sparse": so da identidade ao app para o Explorer carregar o menu moderno do Windows 11.
+     Os arquivos reais ficam na pasta de instalacao (ExternalLocation). -->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap10 desktop4 desktop5 com rescap">
+
+  <Identity Name="FastInstallAPK.ContextMenu" Publisher="__PUBLISHER__" Version="__VERSION__" ProcessorArchitecture="neutral" />
+
+  <Properties>
+    <DisplayName>Fast Install APK</DisplayName>
+    <PublisherDisplayName>Fast Install APK</PublisherDisplayName>
+    <Logo>Assets\logo.png</Logo>
+    <uap10:AllowExternalContent>true</uap10:AllowExternalContent>
+  </Properties>
+
+  <Resources>
+    <Resource Language="pt-br" />
+  </Resources>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="unvirtualizedResources" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="FastInstallAPK" Executable="FastInstallAPK.exe" uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="win32App">
+      <uap:VisualElements DisplayName="Fast Install APK" Description="Instalar/Desinstalar APK via adb"
+        Square150x150Logo="Assets\logo.png" Square44x44Logo="Assets\logo.png" BackgroundColor="transparent" AppListEntry="none" />
+      <Extensions>
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type=".apk">
+              <desktop5:Verb Id="FastApkInstall" Clsid="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01" />
+              <desktop5:Verb Id="FastApkUninstall" Clsid="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A02" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="Fast Install APK">
+              <com:Class Id="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01" Path="FastApkMenu.dll" ThreadingModel="STA" />
+              <com:Class Id="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A02" Path="FastApkMenu.dll" ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>
