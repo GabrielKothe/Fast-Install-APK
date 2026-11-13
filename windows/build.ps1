@@ -10,12 +10,19 @@ $pkg = Join-Path $build 'pkg'
 Remove-Item $build -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $pkg | Out-Null
 
+Write-Host '==> Compilando fastapk.exe'
+$env:GOOS = 'windows'; $env:GOARCH = 'amd64'; $env:CGO_ENABLED = '0'
+& go build -trimpath -ldflags "-s -w -X main.version=$Version" -o "$build\fastapk.exe" "$root\cmd\fastapk"
+if ($LASTEXITCODE) { throw 'Falha ao compilar o fastapk' }
+Remove-Item Env:GOOS, Env:GOARCH, Env:CGO_ENABLED
+# lista de itens do menu (lida pela DLL do Windows 11)
+$menu = & "$build\fastapk.exe" menu
+[System.IO.File]::WriteAllLines("$build\menu.txt", $menu, (New-Object System.Text.UTF8Encoding $false))
+
 Write-Host '==> Compilando FastApkMenu.dll'
 & g++ -O2 -shared -static -static-libgcc -static-libstdc++ -municode -o "$build\FastApkMenu.dll" `
-    "$here\shellext\FastApkMenu.cpp" "$here\shellext\FastApkMenu.def" -lole32 -luuid -lshlwapi
+    "$here\shellext\FastApkMenu.cpp" "$here\shellext\FastApkMenu.def" -lole32 -luuid
 if ($LASTEXITCODE) { throw 'Falha ao compilar a DLL' }
-& gcc -O2 -mwindows -o "$build\FastInstallAPK.exe" "$here\shellext\stub.c"
-if ($LASTEXITCODE) { throw 'Falha ao compilar o stub' }
 
 Write-Host '==> Gerando icones'
 & "$here\shellext\make-icons.ps1" -OutDir $build

@@ -1,5 +1,5 @@
 ; Fast Install APK - instalador Windows (Inno Setup 6)
-; Compilar: "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows\installer.iss
+; Gerar com: powershell -File windows\build.ps1 -Version x.y.z
 
 #define AppName "Fast Install APK"
 #ifndef AppVersion
@@ -31,37 +31,36 @@ Name: "ptbr"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 Name: "en"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "fast-apk.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\build\fastapk.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\build\menu.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "modern-menu.ps1"; DestDir: "{app}"; Flags: ignoreversion
 ; Menu moderno do Windows 11 (gerados por build.ps1)
 Source: "..\build\FastApkMenu.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete
-Source: "..\build\FastInstallAPK.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\FastInstallAPK.msix"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\install.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\uninstall.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\logo.ico"; DestDir: "{app}"; Flags: ignoreversion
-; Pacote sparse le os logos (icone do submenu "Fast Install APK") da pasta externa
+; O pacote sparse le os logos da pasta externa
 Source: "..\build\Assets\*"; DestDir: "{app}\Assets"; Flags: ignoreversion
 
+[InstallDelete]
+; arquivos da versao 1.x
+Type: files; Name: "{app}\fast-apk.ps1"
+Type: files; Name: "{app}\FastInstallAPK.exe"
+
 [Run]
+Filename: "{app}\fastapk.exe"; Parameters: "register-classic"; Flags: runhidden waituntilterminated; StatusMsg: "Registrando o menu..."
 Filename: "{win}\System32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\modern-menu.ps1"" register ""{app}"""; Flags: runhidden waituntilterminated; StatusMsg: "Registrando o menu do Windows 11..."
 
 [UninstallRun]
+Filename: "{app}\fastapk.exe"; Parameters: "unregister-classic"; Flags: runhidden waituntilterminated; RunOnceId: "UnregisterClassicMenu"
 Filename: "{win}\System32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\modern-menu.ps1"" unregister ""{app}"""; Flags: runhidden waituntilterminated; RunOnceId: "UnregisterModernMenu"
 
-[Registry]
-Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.apk\shell\FastApk.1Install"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.apk\shell\FastApk.1Install"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Instalar via adb"
-Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.apk\shell\FastApk.1Install"; ValueType: string; ValueName: "Icon"; ValueData: "{win}\System32\imageres.dll,-1028"
-Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.apk\shell\FastApk.1Install\command"; ValueType: string; ValueName: ""; ValueData: """{win}\System32\WindowsPowerShell\v1.0\powershell.exe"" -NoProfile -ExecutionPolicy Bypass -File ""{app}\fast-apk.ps1"" install ""%1"""
-
-Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.apk\shell\FastApk.2Uninstall"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.apk\shell\FastApk.2Uninstall"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Desinstalar via adb"
-Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.apk\shell\FastApk.2Uninstall"; ValueType: string; ValueName: "Icon"; ValueData: "{win}\System32\imageres.dll,-5305"
-Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.apk\shell\FastApk.2Uninstall\command"; ValueType: string; ValueName: ""; ValueData: """{win}\System32\WindowsPowerShell\v1.0\powershell.exe"" -NoProfile -ExecutionPolicy Bypass -File ""{app}\fast-apk.ps1"" uninstall ""%1"""
+[UninstallDelete]
+Type: filesandordirs; Name: "{userappdata}\FastInstallAPK"
 
 [Messages]
-ptbr.FinishedLabel=O {#AppName} foi instalado.%n%nClique com o botao direito em um arquivo .apk e escolha "Instalar via adb" ou "Desinstalar via adb".%n%nSe as opcoes nao aparecerem de imediato, feche e abra o Explorador de Arquivos.
+ptbr.FinishedLabel=O {#AppName} foi instalado.%n%nClique com o botao direito em um arquivo .apk e abra o submenu "Fast Install APK".%n%nSe nao aparecer de imediato, feche e abra o Explorador de Arquivos.
 
 [Code]
 function AdbFound(): Boolean;
@@ -71,11 +70,10 @@ var
   PathEnv: String;
 begin
   Result := False;
-  SetArrayLength(Paths, 4);
+  SetArrayLength(Paths, 3);
   Paths[0] := GetEnv('ANDROID_HOME') + '\platform-tools\adb.exe';
   Paths[1] := GetEnv('ANDROID_SDK_ROOT') + '\platform-tools\adb.exe';
   Paths[2] := ExpandConstant('{localappdata}') + '\Android\Sdk\platform-tools\adb.exe';
-  Paths[3] := 'D:\AndroidSDK\platform-tools\adb.exe';
   for I := 0 to GetArrayLength(Paths) - 1 do
     if FileExists(Paths[I]) then begin Result := True; Exit; end;
   PathEnv := GetEnv('PATH');

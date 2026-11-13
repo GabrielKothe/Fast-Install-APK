@@ -34,15 +34,14 @@
   </Capabilities>
 
   <Applications>
-    <Application Id="FastInstallAPK" Executable="FastInstallAPK.exe" uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="win32App">
+    <Application Id="FastInstallAPK" Executable="fastapk.exe" uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="win32App">
       <uap:VisualElements DisplayName="Fast Install APK" Description="Instalar/Desinstalar APK via adb"
         Square150x150Logo="Assets\logo150.png" Square44x44Logo="Assets\logo44.png" BackgroundColor="transparent" AppListEntry="none" />
       <Extensions>
         <desktop4:Extension Category="windows.fileExplorerContextMenus">
           <desktop4:FileExplorerContextMenus>
             <desktop5:ItemType Type=".apk">
-              <desktop5:Verb Id="FastApkInstall" Clsid="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01" />
-              <desktop5:Verb Id="FastApkUninstall" Clsid="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A02" />
+              <desktop5:Verb Id="FastInstallAPK" Clsid="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01" />
             </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
@@ -50,7 +49,6 @@
           <com:ComServer>
             <com:SurrogateServer DisplayName="Fast Install APK">
               <com:Class Id="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01" Path="FastApkMenu.dll" ThreadingModel="STA" />
-              <com:Class Id="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A02" Path="FastApkMenu.dll" ThreadingModel="STA" />
             </com:SurrogateServer>
           </com:ComServer>
         </com:Extension>

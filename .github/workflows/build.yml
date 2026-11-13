@@ -13,12 +13,17 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       - name: Versao
         shell: bash
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" | sed 's/=main$/=1.0.0/' >> $GITHUB_ENV
+        run: |
+          V="${GITHUB_REF_NAME#v}"; [ "$GITHUB_REF_TYPE" = tag ] || V=0.0.0-dev
+          echo "VERSION=$V" >> $GITHUB_ENV
       - name: Instalar Inno Setup
         run: choco install innosetup -y --no-progress
-      - name: Compilar extensao + MSIX + setup.exe
+      - name: Compilar fastapk + extensao + MSIX + setup.exe
         run: .\windows\build.ps1 -Version $env:VERSION
       - uses: actions/upload-artifact@v4
         with:
@@ -29,14 +34,26 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       - name: Versao
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" | sed 's/=main$/=1.0.0/' >> $GITHUB_ENV
+        run: |
+          V="${GITHUB_REF_NAME#v}"; [ "$GITHUB_REF_TYPE" = tag ] || V=0.0.0-dev
+          echo "VERSION=$V" >> $GITHUB_ENV
+      - name: Compilar fastapk (universal)
+        run: |
+          for a in arm64 amd64; do
+            GOOS=darwin GOARCH=$a CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "fastapk-$a" ./cmd/fastapk
+          done
+          lipo -create -output macos/fastapk fastapk-arm64 fastapk-amd64
+          chmod +x macos/fastapk
       - name: Gerar .pkg e .zip
         run: |
           bash macos/build-pkg.sh "$VERSION"
           chmod +x macos/*.sh macos/*.command
           mkdir -p "dist/FastInstallAPK-mac"
-          cp macos/fast-apk.sh macos/install.sh macos/uninstall.sh macos/*.command "dist/FastInstallAPK-mac/"
+          cp macos/fastapk macos/install.sh macos/uninstall.sh macos/*.command "dist/FastInstallAPK-mac/"
           (cd dist && zip -r "FastInstallAPK-mac-$VERSION.zip" FastInstallAPK-mac)
       - uses: actions/upload-artifact@v4
         with:

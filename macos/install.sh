@@ -12,8 +12,9 @@ UTI="com.android.package-archive"
 [ "$1" = "--all-files" ] && UTI="public.data"
 
 mkdir -p "$DEST" "$SERVICES"
-cp "$SRC/fast-apk.sh" "$DEST/fast-apk.sh"
-chmod +x "$DEST/fast-apk.sh"
+cp "$SRC/fastapk" "$DEST/fastapk"
+chmod +x "$DEST/fastapk"
+xattr -d com.apple.quarantine "$DEST/fastapk" 2>/dev/null || true
 
 # App "fantasma" que so declara o tipo .apk (UTI) para o macOS reconhecer o arquivo
 APP="$DEST/FastInstallAPK.app"
@@ -58,7 +59,7 @@ make_workflow() {  # $1 = nome do menu, $2 = acao
   mkdir -p "$wf/Contents"
   local script
   script=$(xml_escape "for f in \"\$@\"; do
-  case \"\$f\" in *.apk|*.APK) \"$DEST/fast-apk.sh\" launch $2 \"\$f\" ;; esac
+  case \"\$f\" in *.apk|*.APK) \"$DEST/fastapk\" launch $2 \"\$f\" ;; esac
 done")
 
   cat > "$wf/Contents/Info.plist" <<EOF
@@ -165,6 +166,7 @@ EOF
 EOF
 }
 
+make_workflow "Fast Install APK…" menu
 make_workflow "Instalar via adb" install
 make_workflow "Desinstalar via adb" uninstall
 
@@ -172,5 +174,5 @@ make_workflow "Desinstalar via adb" uninstall
 /System/Library/CoreServices/pbs -update >/dev/null 2>&1 || true
 
 echo "Fast Install APK instalado!"
-echo "Clique com o botao direito em um .apk no Finder > Acoes Rapidas > Instalar/Desinstalar via adb."
+echo "Clique com o botao direito em um .apk no Finder > Acoes Rapidas > "Fast Install APK…" (todas as opcoes) ou Instalar/Desinstalar via adb."
 echo "Se nao aparecer: Ajustes do Sistema > Privacidade e Seguranca > Extensoes > Finder, e ative as duas acoes."

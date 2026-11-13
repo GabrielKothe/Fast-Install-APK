@@ -10,8 +10,8 @@ trap 'rm -rf "$WORK"' EXIT
 
 PAYLOAD="$WORK/root/Library/Application Support/FastInstallAPK/installer"
 mkdir -p "$PAYLOAD" "$WORK/scripts" "$OUT"
-cp "$HERE/fast-apk.sh" "$HERE/install.sh" "$HERE/uninstall.sh" "$PAYLOAD/"
-chmod 755 "$PAYLOAD"/*.sh
+cp "${FASTAPK_BIN:-$HERE/fastapk}" "$HERE/install.sh" "$HERE/uninstall.sh" "$PAYLOAD/"
+chmod 755 "$PAYLOAD"/*
 
 # As Acoes Rapidas ficam na pasta do usuario, entao o postinstall roda o install.sh como o usuario logado
 cat > "$WORK/scripts/postinstall" <<'EOF'
