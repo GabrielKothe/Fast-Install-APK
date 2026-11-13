@@ -472,7 +472,7 @@ func actPull(c *ctx) error {
 		return fmt.Errorf("%s não está instalado em %s", pkg, d.Label())
 	}
 	base := fmt.Sprintf("%s-v%s-instalado", pkg, ii.VersionName)
-	dir := filepath.Dir(c.apk)
+	dir := c.outDir
 	var target string
 	if len(ii.Paths) == 1 {
 		target = filepath.Join(dir, base+".apk")
@@ -578,6 +578,9 @@ func actWifi(c *ctx) error {
 		return errors.New("falha ao conectar")
 	}
 	ok("Conectado em " + target + ".")
+	if c.info == nil {
+		return nil
+	}
 	if a := strings.ToLower(prompt("\nInstalar o APK agora nesse aparelho? [S/n] ")); a == "" || a == "s" || a == "sim" {
 		model := strings.TrimSpace(shell(Device{Serial: target}, "getprop", "ro.product.model"))
 		return installOn(c, Device{Serial: target, Model: model})

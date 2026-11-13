@@ -43,20 +43,21 @@ func section(s string) { fmt.Println("\n" + color("1", s)) }
 // ---------------------------------------------------------------------------
 
 type ctx struct {
-	apk  string
-	info *ApkInfo
-	note string // texto da notificacao final
+	apk    string   // vazio quando a acao foi chamada sem APK (fundo de pasta)
+	outDir string   // onde salvar prints, gravacoes, logs
+	info   *ApkInfo // nil sem APK
+	note   string   // texto da notificacao final
 }
 
 type action struct {
 	ID     string
 	Title  string
-	Icon   string // icone do menu no Windows (arquivo .ico na pasta do app)
-	Sep    bool   // separador antes deste item
-	Single bool   // com varios arquivos selecionados, roda so para o primeiro
-	Device bool   // precisa de adb/aparelho
-	Wait   bool   // sempre espera Enter no final (mostra informacao)
-	Full   bool   // le hash/assinatura do APK
+	Sep    bool // separador antes deste item
+	Single bool // com varios arquivos selecionados, roda so para o primeiro
+	Device bool // precisa de adb/aparelho
+	Wait   bool // sempre espera Enter no final (mostra informacao)
+	Full   bool // le hash/assinatura do APK
+	NoApk  bool // funciona sem APK: aparece tambem no botao direito do fundo de pasta
 	Run    func(c *ctx) error
 }
 
@@ -64,25 +65,26 @@ var actions []action
 
 func init() {
 	actions = []action{
-		{ID: "install", Title: "Instalar via adb", Icon: "install.ico", Device: true, Run: actInstall},
-		{ID: "install-grant", Title: "Instalar concedendo permissões", Icon: "install.ico", Device: true, Run: actInstallGrant},
-		{ID: "install-downgrade", Title: "Instalar permitindo downgrade", Icon: "install.ico", Device: true, Run: actInstallDowngrade},
-		{ID: "install-all", Title: "Instalar em todos os aparelhos", Icon: "install.ico", Device: true, Run: actInstallAll},
-		{ID: "reinstall", Title: "Reinstalar limpo", Icon: "install.ico", Device: true, Run: actReinstall},
+		{ID: "install", Title: "Instalar via adb", Device: true, Run: actInstall},
+		{ID: "install-grant", Title: "Instalar concedendo permissões", Device: true, Run: actInstallGrant},
+		{ID: "install-downgrade", Title: "Instalar permitindo downgrade", Device: true, Run: actInstallDowngrade},
+		{ID: "install-all", Title: "Instalar em todos os aparelhos", Device: true, Run: actInstallAll},
+		{ID: "reinstall", Title: "Reinstalar limpo", Device: true, Run: actReinstall},
 
 		{ID: "restart", Title: "Forçar parada e abrir", Sep: true, Device: true, Run: actRestart},
 		{ID: "clear", Title: "Limpar dados do app", Device: true, Run: actClear},
-		{ID: "uninstall", Title: "Desinstalar via adb", Icon: "uninstall.ico", Device: true, Run: actUninstall},
+		{ID: "uninstall", Title: "Desinstalar via adb", Device: true, Run: actUninstall},
 
 		{ID: "logcat", Title: "Logcat do app", Sep: true, Single: true, Device: true, Wait: true, Run: actLogcat},
 		{ID: "info", Title: "Informações do APK", Wait: true, Full: true, Run: actInfo},
 		{ID: "compare", Title: "Comparar com o instalado", Device: true, Wait: true, Full: true, Run: actCompare},
 
-		{ID: "screenshot", Title: "Print da tela", Sep: true, Single: true, Device: true, Run: actScreenshot},
-		{ID: "record", Title: "Gravar a tela", Single: true, Device: true, Run: actRecord},
 		{ID: "pull", Title: "Puxar APK instalado", Single: true, Device: true, Run: actPull},
 
-		{ID: "wifi", Title: "Conectar via Wi-Fi", Sep: true, Single: true, Device: true, Wait: true, Run: actWifi},
+		{ID: "mirror", Title: "Espelhar a tela", Sep: true, Single: true, Device: true, NoApk: true, Run: actMirror},
+		{ID: "screenshot", Title: "Print da tela", Single: true, Device: true, NoApk: true, Run: actScreenshot},
+		{ID: "record", Title: "Gravar a tela", Single: true, Device: true, NoApk: true, Run: actRecord},
+		{ID: "wifi", Title: "Conectar via Wi-Fi", Single: true, Device: true, Wait: true, NoApk: true, Run: actWifi},
 	}
 }
 
@@ -116,7 +118,8 @@ func main() {
 		fmt.Println(version)
 		return
 	case "menu":
-		// usado pela DLL do Windows 11: id|titulo|icone|flags (s = separador antes, 1 = so o primeiro arquivo)
+		// usado pela DLL do Windows 11: id|titulo|icone|flags
+		// flags: s = separador antes, 1 = so o primeiro arquivo, n = funciona sem APK (fundo de pasta)
 		for _, a := range actions {
 			flags := ""
 			if a.Sep {
@@ -125,7 +128,10 @@ func main() {
 			if a.Single {
 				flags += "1"
 			}
-			fmt.Printf("%s|%s|%s|%s\n", a.ID, a.Title, a.Icon, flags)
+			if a.NoApk {
+				flags += "n"
+			}
+			fmt.Printf("%s|%s|%s.ico|%s\n", a.ID, a.Title, a.ID, flags) // icone: <id>.ico na pasta do app
 		}
 		return
 	case "register-classic":
@@ -143,34 +149,52 @@ func main() {
 	}
 
 	a := findAction(os.Args[1])
-	if a == nil || len(os.Args) < 3 {
+	if a == nil || (len(os.Args) < 3 && !a.NoApk) {
 		usage()
 	}
-	apk, err := filepath.Abs(os.Args[2])
-	if err != nil {
-		apk = os.Args[2]
+	// alvo: o APK, ou (acoes sem APK) uma pasta/arquivo qualquer; sem alvo = pasta atual
+	target := "."
+	if len(os.Args) >= 3 {
+		target = strings.Trim(os.Args[2], `"`)
 	}
+	if abs, err := filepath.Abs(target); err == nil {
+		target = abs
+	}
+	c := &ctx{outDir: target}
+	if st, err := os.Stat(target); err == nil && !st.IsDir() {
+		c.outDir = filepath.Dir(target)
+		if !a.NoApk || strings.EqualFold(filepath.Ext(target), ".apk") {
+			c.apk = target
+		}
+	}
+
 	setTitle(appName + " - " + a.Title)
 	fmt.Println(color("1", appName+" - "+a.Title))
-	fmt.Println(dim(apk))
+	fmt.Println(dim(target))
 
-	c := &ctx{apk: apk}
 	run := func() error {
-		info, err := readApk(apk, a.Full)
-		if err != nil {
-			return err
+		if c.apk != "" {
+			info, err := readApk(c.apk, a.Full)
+			if err != nil && !a.NoApk {
+				return err
+			}
+			if err == nil {
+				c.info = info
+				fmt.Printf("Package: %s  %s\n", color("1", info.Package), dim(versionLabel(info.VersionName, info.VersionCode)))
+			}
+		} else if !a.NoApk {
+			return fmt.Errorf("esta opção precisa de um arquivo .apk")
 		}
-		c.info = info
-		fmt.Printf("Package: %s  %s\n\n", color("1", info.Package), dim(versionLabel(info.VersionName, info.VersionCode)))
+		fmt.Println()
 		if a.Device {
+			var err error
 			if adbPath, err = findAdb(); err != nil {
 				return err
 			}
 		}
 		return a.Run(c)
 	}
-	err = run()
-	finish(a, c, err)
+	finish(a, c, run())
 }
 
 func versionLabel(name, code string) string {
@@ -212,7 +236,11 @@ func finish(a *action, c *ctx, err error) {
 	if c.note != "" {
 		notify(appName, c.note)
 	} else if !a.Wait {
-		notify(appName, a.Title+": concluído ("+pkg+")")
+		msg := a.Title + ": concluído"
+		if pkg != "" {
+			msg += " (" + pkg + ")"
+		}
+		notify(appName, msg)
 	}
 	if a.Wait {
 		pause()
@@ -241,5 +269,5 @@ func outputPath(c *ctx, prefix string, d Device, ext string) string {
 		}
 		return r
 	}, name)
-	return filepath.Join(filepath.Dir(c.apk), fmt.Sprintf("%s-%s-%s.%s", prefix, name, time.Now().Format("20060102-150405"), ext))
+	return filepath.Join(c.outDir, fmt.Sprintf("%s-%s-%s.%s", prefix, name, time.Now().Format("20060102-150405"), ext))
 }

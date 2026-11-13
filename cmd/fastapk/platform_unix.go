@@ -10,11 +10,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 )
 
 func platformInit()            {}
 func setTitle(t string)        { fmt.Printf("\x1b]0;%s\x07", t) }
 func hideWindow(c *exec.Cmd)   {}
+func detach(c *exec.Cmd)       { c.SysProcAttr = &syscall.SysProcAttr{Setsid: true} }
 func registerClassic() error   { return errors.New("so no Windows") }
 func unregisterClassic() error { return errors.New("so no Windows") }
 

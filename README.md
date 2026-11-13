@@ -15,10 +15,13 @@ Clique com o botão direito em um `.apk` e use o submenu **Fast Install APK**:
 | Diagnóstico | Logcat do app | log só do processo do app, colorido e salvo em `.txt` ao lado do APK |
 | | Informações do APK | package, versão, SDK mín./alvo, arquiteturas, permissões e assinatura (SHA-1/SHA-256). Não precisa de aparelho |
 | | Comparar com o instalado | versão e assinatura do APK x app instalado: avisa antes do erro de "assinatura diferente" |
-| Evidências | Print da tela | salva `.png` ao lado do APK |
-| | Gravar a tela | grava até apertar Enter (máx. 3 min) e salva `.mp4` ao lado do APK |
 | | Puxar APK instalado | copia o APK que está no aparelho (inclusive split APKs) |
-| Conexão | Conectar via Wi-Fi | ativa adb por Wi-Fi a partir do USB, pareia (Android 11+) ou conecta em IP:porta |
+| Tela ✱ | Espelhar a tela | mostra e controla a tela do aparelho no PC com o [scrcpy](https://github.com/Genymobile/scrcpy) (se não estiver instalado, oferece instalar pelo `winget`/`brew`) |
+| ✱ | Print da tela | salva `.png` na pasta |
+| ✱ | Gravar a tela | grava até apertar Enter (máx. 3 min) e salva `.mp4` na pasta |
+| ✱ | Conectar via Wi-Fi | ativa adb por Wi-Fi a partir do USB, pareia (Android 11+) ou conecta em IP:porta |
+
+✱ **Não precisam de APK**: além do `.apk`, aparecem no botão direito do **fundo de qualquer pasta** e da **Área de Trabalho**, e salvam os arquivos nessa pasta.
 
 Também:
 
@@ -37,7 +40,7 @@ Também:
 
 Rode `FastInstallAPK-Setup-<versão>.exe` (não precisa de administrador). Para remover: *Configurações > Aplicativos > Fast Install APK*.
 
-- **Windows 11**: o submenu aparece direto no menu novo. Se não aparecer logo, feche e abra o Explorador de Arquivos.
+- **Windows 11**: o submenu aparece direto no menu novo, com um ícone por opção. Se não aparecer logo, feche e abra o Explorador de Arquivos. O menu novo do Windows 11 não mostra separadores nos submenus, por isso as cores dos ícones indicam os grupos.
 - **Windows 10** ou "Mostrar mais opções": o mesmo submenu também fica no menu clássico.
 
 ## macOS

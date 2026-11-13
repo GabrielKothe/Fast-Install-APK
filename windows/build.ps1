@@ -26,6 +26,7 @@ if ($LASTEXITCODE) { throw 'Falha ao compilar a DLL' }
 
 Write-Host '==> Gerando icones'
 & "$here\shellext\make-icons.ps1" -OutDir $build
+if ((Get-ChildItem "$build\*.ico").Count -lt 2) { throw 'Falha ao gerar os icones' }
 
 Write-Host '==> Gerando pacote MSIX'
 Copy-Item "$build\Assets" $pkg -Recurse

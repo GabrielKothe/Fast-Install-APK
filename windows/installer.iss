@@ -37,9 +37,8 @@ Source: "modern-menu.ps1"; DestDir: "{app}"; Flags: ignoreversion
 ; Menu moderno do Windows 11 (gerados por build.ps1)
 Source: "..\build\FastApkMenu.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete
 Source: "..\build\FastInstallAPK.msix"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\build\install.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\build\uninstall.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\build\logo.ico"; DestDir: "{app}"; Flags: ignoreversion
+; icones: logo.ico + um <id>.ico por opcao do menu
+Source: "..\build\*.ico"; DestDir: "{app}"; Flags: ignoreversion
 ; O pacote sparse le os logos da pasta externa
 Source: "..\build\Assets\*"; DestDir: "{app}\Assets"; Flags: ignoreversion
 

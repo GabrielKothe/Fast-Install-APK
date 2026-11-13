@@ -43,12 +43,16 @@
             <desktop5:ItemType Type=".apk">
               <desktop5:Verb Id="FastInstallAPK" Clsid="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01" />
             </desktop5:ItemType>
+            <desktop5:ItemType Type="Directory\Background">
+              <desktop5:Verb Id="FastInstallAPKBackground" Clsid="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A02" />
+            </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:SurrogateServer DisplayName="Fast Install APK">
               <com:Class Id="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01" Path="FastApkMenu.dll" ThreadingModel="STA" />
+              <com:Class Id="A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A02" Path="FastApkMenu.dll" ThreadingModel="STA" />
             </com:SurrogateServer>
           </com:ComServer>
         </com:Extension>

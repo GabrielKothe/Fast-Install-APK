@@ -47,6 +47,11 @@ func setTitle(t string) {
 
 func hideWindow(c *exec.Cmd) {}
 
+// detach: o processo continua aberto depois que esta janela fechar
+func detach(c *exec.Cmd) {
+	c.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x00000008 | 0x00000200} // DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+}
+
 func confirm(text string) bool {
 	const (
 		mbYesNo         = 0x4
@@ -104,7 +109,19 @@ func platformLaunch(action, apk string) error {
 // Menu classico (Windows 10 e "Mostrar mais opcoes" do Windows 11)
 // ---------------------------------------------------------------------------
 
-const classicKey = `HKCU\Software\Classes\SystemFileAssociations\.apk\shell\FastInstallAPK`
+// onde o menu "Fast Install APK" aparece: arquivos .apk (todas as opcoes) e
+// fundo de pasta / Area de Trabalho (so as opcoes que funcionam sem APK)
+var classicMenus = []struct {
+	sub   string // relativo a HKCU\Software\Classes
+	noApk bool
+	arg   string
+}{
+	{`SystemFileAssociations\.apk\shell\FastInstallAPK`, false, "%1"},
+	{`Directory\Background\shell\FastInstallAPK`, true, "%V"},
+	{`DesktopBackground\shell\FastInstallAPK`, true, "%V"},
+}
+
+const classesRoot = `HKCU\Software\Classes\`
 
 func reg(args ...string) error {
 	cmd := exec.Command("reg.exe", args...)
@@ -121,31 +138,33 @@ func registerClassic() error {
 		return err
 	}
 	dir := filepath.Dir(exe)
-	// remove entradas antigas (versao 1.x)
-	for _, k := range []string{"FastApk.1Install", "FastApk.2Uninstall"} {
-		reg("delete", `HKCU\Software\Classes\SystemFileAssociations\.apk\shell\`+k, "/f")
-	}
-	reg("delete", classicKey, "/f")
+	unregisterClassic()
 
-	if err := reg("add", classicKey, "/v", "MUIVerb", "/d", appName, "/f"); err != nil {
-		return err
-	}
-	reg("add", classicKey, "/v", "Icon", "/d", filepath.Join(dir, "logo.ico"), "/f")
-	reg("add", classicKey, "/v", "ExtendedSubCommandsKey", "/d", `SystemFileAssociations\.apk\shell\FastInstallAPK`, "/f")
-	for i, a := range actions {
-		k := fmt.Sprintf(`%s\shell\%02d-%s`, classicKey, i, a.ID)
-		reg("add", k, "/v", "MUIVerb", "/d", a.Title, "/f")
-		if a.Icon != "" {
-			reg("add", k, "/v", "Icon", "/d", filepath.Join(dir, a.Icon), "/f")
-		}
-		if a.Sep && i > 0 {
-			reg("add", k, "/v", "CommandFlags", "/t", "REG_DWORD", "/d", "32", "/f") // ECF_SEPARATORBEFORE
-		}
-		if a.Single {
-			reg("add", k, "/v", "MultiSelectModel", "/d", "Single", "/f")
-		}
-		if err := reg("add", k+`\command`, "/ve", "/d", fmt.Sprintf(`"%s" %s "%%1"`, exe, a.ID), "/f"); err != nil {
+	for _, m := range classicMenus {
+		key := classesRoot + m.sub
+		if err := reg("add", key, "/v", "MUIVerb", "/d", appName, "/f"); err != nil {
 			return err
+		}
+		reg("add", key, "/v", "Icon", "/d", filepath.Join(dir, "logo.ico"), "/f")
+		reg("add", key, "/v", "ExtendedSubCommandsKey", "/d", m.sub, "/f")
+		n := 0
+		for i, a := range actions {
+			if m.noApk && !a.NoApk {
+				continue
+			}
+			k := fmt.Sprintf(`%s\shell\%02d-%s`, key, i, a.ID)
+			reg("add", k, "/v", "MUIVerb", "/d", a.Title, "/f")
+			reg("add", k, "/v", "Icon", "/d", filepath.Join(dir, a.ID+".ico"), "/f")
+			if a.Sep && n > 0 {
+				reg("add", k, "/v", "CommandFlags", "/t", "REG_DWORD", "/d", "32", "/f") // ECF_SEPARATORBEFORE
+			}
+			if a.Single {
+				reg("add", k, "/v", "MultiSelectModel", "/d", "Single", "/f")
+			}
+			if err := reg("add", k+`\command`, "/ve", "/d", fmt.Sprintf(`"%s" %s "%s"`, exe, a.ID, m.arg), "/f"); err != nil {
+				return err
+			}
+			n++
 		}
 	}
 	fmt.Println("Menu classico registrado.")
@@ -153,9 +172,12 @@ func registerClassic() error {
 }
 
 func unregisterClassic() error {
-	reg("delete", classicKey, "/f")
+	for _, m := range classicMenus {
+		reg("delete", classesRoot+m.sub, "/f")
+	}
+	// entradas da versao 1.x
 	for _, k := range []string{"FastApk.1Install", "FastApk.2Uninstall"} {
-		reg("delete", `HKCU\Software\Classes\SystemFileAssociations\.apk\shell\`+k, "/f")
+		reg("delete", classesRoot+`SystemFileAssociations\.apk\shell\`+k, "/f")
 	}
 	return nil
 }

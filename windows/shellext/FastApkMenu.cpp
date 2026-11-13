@@ -1,7 +1,7 @@
 // Fast Install APK - menu de contexto moderno do Windows 11 (IExplorerCommand)
 // Carregada pelo Explorer via pacote MSIX "sparse" (ver AppxManifest.xml).
 //
-// Mostra "Fast Install APK" com um submenu. Os itens vem de menu.txt (gerado por `fastapk menu`),
+// Mostra "Fast Install APK" com um submenu (no .apk: todas as opcoes; no fundo de pasta: so as sem APK). Os itens vem de menu.txt (gerado por `fastapk menu`),
 // uma linha por item: id|titulo|icone|flags   (flags: s = separador antes, 1 = so o primeiro arquivo)
 // Cada item executa: fastapk.exe <id> "<arquivo.apk>"
 #define WIN32_LEAN_AND_MEAN
@@ -14,13 +14,16 @@
 static HMODULE g_module = nullptr;
 static LONG g_refs = 0;
 
-// {A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01}
+// {A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A01}: menu dos arquivos .apk (todas as opcoes)
 static const CLSID CLSID_Root = {0xa3c1f0e2, 0x5b7d, 0x4e8a, {0x9c, 0x61, 0x2d, 0x4f, 0x8b, 0x9e, 0x1a, 0x01}};
+// {A3C1F0E2-5B7D-4E8A-9C61-2D4F8B9E1A02}: menu do fundo de pasta (so opcoes que funcionam sem APK)
+static const CLSID CLSID_Background = {0xa3c1f0e2, 0x5b7d, 0x4e8a, {0x9c, 0x61, 0x2d, 0x4f, 0x8b, 0x9e, 0x1a, 0x02}};
 
 struct MenuItem {
     std::wstring id, title, icon;
     bool separator = false;
     bool single = false;
+    bool noApk = false;  // funciona sem APK
 };
 
 static std::wstring ModuleDir() {
@@ -71,6 +74,7 @@ static std::vector<MenuItem> LoadMenu() {
         if (f.size() > 3) {
             it.separator = f[3].find(L's') != std::wstring::npos;
             it.single = f[3].find(L'1') != std::wstring::npos;
+            it.noApk = f[3].find(L'n') != std::wstring::npos;
         }
         items.push_back(it);
     }
@@ -222,9 +226,10 @@ private:
 // ---------------------------------------------------------------------------
 class RootCommand : public CommandBase {
 public:
+    explicit RootCommand(bool background) : m_background(background) {}
     IFACEMETHODIMP GetTitle(IShellItemArray*, LPWSTR* name) override { return DupString(L"Fast Install APK", name); }
     IFACEMETHODIMP GetIcon(IShellItemArray*, LPWSTR* icon) override { return DupString(ModuleDir() + L"\\logo.ico", icon); }
-    IFACEMETHODIMP GetCanonicalName(GUID* guid) override { *guid = CLSID_Root; return S_OK; }
+    IFACEMETHODIMP GetCanonicalName(GUID* guid) override { *guid = m_background ? CLSID_Background : CLSID_Root; return S_OK; }
     IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override { *flags = ECF_HASSUBCOMMANDS; return S_OK; }
     IFACEMETHODIMP Invoke(IShellItemArray*, IBindCtx*) override { return S_OK; }
 
@@ -232,6 +237,7 @@ public:
         std::vector<IExplorerCommand*> cmds;
         bool first = true;
         for (const auto& it : LoadMenu()) {
+            if (m_background && !it.noApk) continue;
             if (it.separator && !first) {
                 if (auto* s = new (std::nothrow) SubCommand(it, true)) cmds.push_back(s);
             }
@@ -241,12 +247,15 @@ public:
         *e = new (std::nothrow) EnumCommands(std::move(cmds));
         return *e ? S_OK : E_OUTOFMEMORY;
     }
+
+private:
+    bool m_background;
 };
 
 // ---------------------------------------------------------------------------
 class Factory : public IClassFactory {
 public:
-    Factory() : m_refs(1) { InterlockedIncrement(&g_refs); }
+    explicit Factory(bool background) : m_refs(1), m_background(background) { InterlockedIncrement(&g_refs); }
     virtual ~Factory() { InterlockedDecrement(&g_refs); }
     IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv) override {
         if (riid == IID_IUnknown || riid == IID_IClassFactory) { *ppv = this; AddRef(); return S_OK; }
@@ -261,7 +270,7 @@ public:
     }
     IFACEMETHODIMP CreateInstance(IUnknown* outer, REFIID riid, void** ppv) override {
         if (outer) return CLASS_E_NOAGGREGATION;
-        RootCommand* cmd = new (std::nothrow) RootCommand();
+        RootCommand* cmd = new (std::nothrow) RootCommand(m_background);
         if (!cmd) return E_OUTOFMEMORY;
         HRESULT hr = cmd->QueryInterface(riid, ppv);
         cmd->Release();
@@ -274,6 +283,7 @@ public:
 
 private:
     LONG m_refs;
+    bool m_background;
 };
 
 extern "C" {
@@ -289,8 +299,11 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID) {
 STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, void** ppv) {
     if (!ppv) return E_POINTER;
     *ppv = nullptr;
-    if (clsid != CLSID_Root) return CLASS_E_CLASSNOTAVAILABLE;
-    Factory* f = new (std::nothrow) Factory();
+    bool background;
+    if (clsid == CLSID_Root) background = false;
+    else if (clsid == CLSID_Background) background = true;
+    else return CLASS_E_CLASSNOTAVAILABLE;
+    Factory* f = new (std::nothrow) Factory(background);
     if (!f) return E_OUTOFMEMORY;
     HRESULT hr = f->QueryInterface(riid, ppv);
     f->Release();
