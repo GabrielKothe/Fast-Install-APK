@@ -22,6 +22,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName={#AppName}
+UninstallDisplayIcon={app}\logo.ico
+SetupIconFile=..\build\logo.ico
 ChangesAssociations=yes
 
 [Languages]
@@ -37,6 +39,9 @@ Source: "..\build\FastInstallAPK.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\FastInstallAPK.msix"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\install.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\uninstall.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\build\logo.ico"; DestDir: "{app}"; Flags: ignoreversion
+; Pacote sparse le os logos (icone do submenu "Fast Install APK") da pasta externa
+Source: "..\build\Assets\*"; DestDir: "{app}\Assets"; Flags: ignoreversion
 
 [Run]
 Filename: "{win}\System32\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\modern-menu.ps1"" register ""{app}"""; Flags: runhidden waituntilterminated; StatusMsg: "Registrando o menu do Windows 11..."

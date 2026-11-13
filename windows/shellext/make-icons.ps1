@@ -13,6 +13,21 @@ function New-Bitmap([int]$size, [string]$kind) {
     $red = [System.Drawing.Color]::FromArgb(255, 232, 72, 85)
     $white = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)
 
+    if ($kind -eq 'logo') {
+        # cabeca do Android: meia-lua verde com antenas e olhos
+        $gb = New-Object System.Drawing.SolidBrush $green
+        $pen = New-Object System.Drawing.Pen $green, ([Math]::Max(1.0, 2.2 * $s))
+        $pen.StartCap = 'Round'; $pen.EndCap = 'Round'
+        $g.DrawLine($pen, 9 * $s, 5 * $s, 12 * $s, 10 * $s)
+        $g.DrawLine($pen, 23 * $s, 5 * $s, 20 * $s, 10 * $s)
+        $g.FillPie($gb, 2 * $s, 8 * $s, 28 * $s, 30 * $s, 180, 180)
+        $dark = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 32, 33, 36))
+        $g.FillEllipse($dark, 9 * $s, 15 * $s, 3.6 * $s, 3.6 * $s)
+        $g.FillEllipse($dark, 19.4 * $s, 15 * $s, 3.6 * $s, 3.6 * $s)
+        $g.Dispose()
+        return $bmp
+    }
+
     $bg = if ($kind -eq 'uninstall') { $red } else { $green }
     $g.FillEllipse((New-Object System.Drawing.SolidBrush $bg), 1 * $s, 1 * $s, 30 * $s, 30 * $s)
 
@@ -65,6 +80,9 @@ function Save-Ico([string]$kind, [string]$path) {
 
 Save-Ico 'install' (Join-Path $OutDir 'install.ico')
 Save-Ico 'uninstall' (Join-Path $OutDir 'uninstall.ico')
-$logo = New-Bitmap 150 'install'
-$logo.Save((Join-Path $OutDir 'Assets\logo.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-$logo.Dispose()
+foreach ($sz in 150, 44) {
+    $logo = New-Bitmap $sz 'logo'
+    $logo.Save((Join-Path $OutDir "Assets\logo$sz.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+    $logo.Dispose()
+}
+Save-Ico 'logo' (Join-Path $OutDir 'logo.ico')
